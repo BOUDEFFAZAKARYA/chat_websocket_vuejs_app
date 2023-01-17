@@ -1,33 +1,94 @@
 <script setup>
 
-import {io} from "socket.io-client";
 
 
-import { ref , onBeforeMount } from "vue";
+import { io } from "socket.io-client";
 
 
-const socket = io("http://localhost:4000") ;
+import { ref, onBeforeMount, onMounted, onUpdated } from "vue";
+
+
+const socket = io("http://localhost:5000");
 
 const messages = ref([]);
 
+const messagetext = ref('');
 
-onBeforeMount(()=>{
- socket.emit('findAllMessages' , {} , (Response) => {
- messages.value = Response ;
+const name = ref('');
+
+const joined = ref(false);
+
+const TypingDisplay = ref('');
+
+
+onUpdated(() => {
+
+  socket.emit('findAllMessages', {}, (Response) => {
+    messages.value = Response;
+
+    console.log(messages.value);
+
+  });
+
+
+  socket.on('message', (message) => {
+
+    messages.value.push(message);
+
+  });
+
+
+
+
 
 });
 
-socket.on('message' ,(message)=>{
 
-  messages.value.push(message);
+const join = () => {
 
-} )
-
+  console.log(joined.value);
 
 
+  console.log("join");
+
+  socket.emit('join', { name: name.value }, () => {
+
+  }
 
 
-})
+
+  );
+
+  joined.value = true;
+
+
+  console.log(joined.value);
+};
+
+
+const sendmessage = () => {
+
+  socket.emit('createMessage', { text: messagetext.value }, () => {
+    messagetext.value = '';
+  });
+  
+
+};
+
+
+let timeout;
+
+const emittyping = () => {
+
+  socket.emit('typing', { isTyping: true });
+
+  timeout = setTimeout(() => { socket.emit('typing', { isTyping: true }) },
+    2000);
+
+
+};
+
+
 
 
 
@@ -37,16 +98,56 @@ socket.on('message' ,(message)=>{
 
   <div class="chat">
 
-    <div class="chat-container">
+    <div v-if="!joined">
 
-      <div  class="messages-container">
+      <form @submit.prevent="join()">
 
-        <div  v-for="message in messages">
+        <label>what's your Name:</label>
+        <input v-model="name">
+        <button type="submit">join</button>
+
+
+
+
+      </form>
+
+
+    </div>
+
+    <div class="chat-container" v-else>
+
+      <div class="messages-container">
+
+        <div v-for="message in messages">
 
           [{{ message.name }}] : {{ message.text }}
 
 
         </div>
+
+
+
+
+        <div>
+
+
+
+          <form @submit.prevent="sendmessage()">
+
+            <label>message:</label>
+            <input v-model="messagetext"  @input="emittyping" >
+            <button type="submit">send</button>
+
+
+          </form>
+
+
+        </div>
+
+
+
+
+
 
 
       </div>
